@@ -6,10 +6,12 @@ privadas em múltiplas Zonas de Disponibilidade (AZs), incluindo Internet Gatewa
 NAT Gateway (NAT GW). O script adere às boas práticas de Infrastructure as Code (IaC) e
 convenções da linguagem Python (PEP 8), utilizando variáveis de ambiente para configuração.
 
-Autor: Prof. Diego Garrio (Refatorado por GPT-4.1)
+Autor: Prof. Diego Garrido (Refatorado por GPT-4.1)
 Data: 2024-09-13
 """
+
 import os
+import ipaddress
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -209,21 +211,26 @@ def main() -> None:
             return
 
         ec2_client = boto3.client('ec2', region_name=region)
-
+        
         # 1. Cria a VPC
         vpc_id = create_vpc(ec2_client, vpc_cidr, vpc_tag_name)
         if not vpc_id:
             return
 
+        # Converte o CIDR da VPC em um objeto de rede
+        base_network = ipaddress.ip_network(vpc_cidr)
+        # Sub-divide a rede principal em sub-redes de tamanho /24
+        subnets_24 = list(base_network.subnets(new_prefix=24))
+
         public_subnets = []
         private_subnets = []
-        az_counter = 0
+        subnet_counter = 0
 
         # 2. Cria sub-redes públicas e privadas em cada AZ
         print("\nIniciando a criação das sub-redes...")
         for az in az_list:
-            if az.strip(): # Garante que a AZ não é uma string vazia
-                public_cidr = f"10.0.{az_counter * 2}.0/24"
+            if az.strip():  # Garante que a AZ não é uma string vazia
+                public_cidr = str(subnets_24[subnet_counter * 2])
                 public_subnet_id = create_subnet(
                     ec2_client, vpc_id, public_cidr, az, f"{vpc_tag_name}-public-{az.split('-')[-1]}"
                 )
@@ -231,7 +238,7 @@ def main() -> None:
                     return
                 public_subnets.append(public_subnet_id)
                 
-                private_cidr = f"10.0.{(az_counter * 2) + 1}.0/24"
+                private_cidr = str(subnets_24[(subnet_counter * 2) + 1])
                 private_subnet_id = create_subnet(
                     ec2_client, vpc_id, private_cidr, az, f"{vpc_tag_name}-private-{az.split('-')[-1]}"
                 )
@@ -239,8 +246,11 @@ def main() -> None:
                     return
                 private_subnets.append(private_subnet_id)
                 
-                az_counter += 1
+                subnet_counter += 1
 
+        # Resto do script, que não precisou ser alterado
+        # ...
+        
         # 3. Cria e anexa o Internet Gateway
         print("\nIniciando a criação e anexo do Internet Gateway...")
         igw_id = create_internet_gateway(ec2_client, vpc_id)
