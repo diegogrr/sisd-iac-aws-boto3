@@ -77,28 +77,34 @@ def create_subnet(ec2_client: boto3.client, vpc_id: str, cidr_block: str, availa
         print(f"Erro na API da AWS ao criar sub-rede: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
     return None
 
-
-def create_internet_gateway(ec2_client: boto3.client, vpc_id: str) -> str:
+def create_internet_gateway(ec2_client: boto3.client, vpc_id: str, vpc_tag_name: str) -> str:
     """
-    Cria e anexa um Internet Gateway (IGW) a uma VPC.
+    Cria, anexa e tagueia um Internet Gateway (IGW) a uma VPC.
 
     Args:
         ec2_client (boto3.client): Cliente Boto3 para o serviço EC2.
         vpc_id (str): ID da VPC à qual o IGW será anexado.
+        vpc_tag_name (str): Nome da tag 'Name' da VPC para compor a tag do IGW.
 
     Returns:
         str: O ID do IGW recém-criado, ou None em caso de falha.
     """
     try:
-        response = ec2_client.create_internet_gateway()
+        response = ec2_client.create_internet_gateway(
+            TagSpecifications=[
+                {
+                    'ResourceType': 'internet-gateway',
+                    'Tags': [{'Key': 'Name', 'Value': f"{vpc_tag_name}-igw"}]
+                }
+            ]
+        )
         igw_id = response['InternetGateway']['InternetGatewayId']
         ec2_client.attach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
-        print(f"Internet Gateway {igw_id} criado e anexado à VPC {vpc_id}")
+        print(f"Internet Gateway {igw_id} ('{vpc_tag_name}-igw') criado e anexado à VPC {vpc_id}")
         return igw_id
     except ClientError as e:
         print(f"Erro na API da AWS ao criar IGW: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
     return None
-
 
 def create_route_table(ec2_client: boto3.client, vpc_id: str, route_table_tag_name: str, igw_id: str = None, nat_gw_id: str = None) -> str:
     """
@@ -142,16 +148,15 @@ def create_route_table(ec2_client: boto3.client, vpc_id: str, route_table_tag_na
         print(f"Erro na API da AWS ao criar tabela de rotas: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
     return None
 
-
-def create_nat_gateway(ec2_client: boto3.client, subnet_id: str) -> str:
+def create_nat_gateway(ec2_client: boto3.client, subnet_id: str, vpc_tag_name: str, az_name: str) -> str:
     """
-    Cria um NAT Gateway em uma sub-rede pública.
-
-    Primeiro, cria um IP elástico e usa sua alocação para o NAT Gateway.
+    Cria um NAT Gateway em uma sub-rede pública, aloca um IP elástico e adiciona tags.
 
     Args:
         ec2_client (boto3.client): Cliente Boto3 para o serviço EC2.
         subnet_id (str): ID da sub-rede pública para o NAT Gateway.
+        vpc_tag_name (str): Nome da tag 'Name' da VPC para compor a tag do NAT GW.
+        az_name (str): Nome da Zona de Disponibilidade para compor a tag do NAT GW.
 
     Returns:
         str: O ID do NAT Gateway, ou None em caso de falha.
@@ -167,6 +172,12 @@ def create_nat_gateway(ec2_client: boto3.client, subnet_id: str) -> str:
         response = ec2_client.create_nat_gateway(
             SubnetId=subnet_id,
             AllocationId=allocation_id,
+            TagSpecifications=[
+                {
+                    'ResourceType': 'natgateway',
+                    'Tags': [{'Key': 'Name', 'Value': f"{vpc_tag_name}-natgw-{az_name}"}]
+                }
+            ]
         )
         nat_gw_id = response['NatGateway']['NatGatewayId']
         
@@ -180,7 +191,6 @@ def create_nat_gateway(ec2_client: boto3.client, subnet_id: str) -> str:
     except ClientError as e:
         print(f"Erro na API da AWS ao criar NAT Gateway: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
     return None
-
 
 def associate_route_table(ec2_client: boto3.client, route_table_id: str, subnet_id: str) -> None:
     """
@@ -247,13 +257,10 @@ def main() -> None:
                 private_subnets.append(private_subnet_id)
                 
                 subnet_counter += 1
-
-        # Resto do script, que não precisou ser alterado
-        # ...
         
         # 3. Cria e anexa o Internet Gateway
         print("\nIniciando a criação e anexo do Internet Gateway...")
-        igw_id = create_internet_gateway(ec2_client, vpc_id)
+        igw_id = create_internet_gateway(ec2_client, vpc_id, vpc_tag_name)
         if not igw_id:
             return
 
@@ -269,7 +276,8 @@ def main() -> None:
         # 5. Cria NAT Gateway (um por AZ pública para alta disponibilidade, mas um é suficiente para exemplo)
         print("\nCriando e configurando o NAT Gateway...")
         # Escolhe a primeira sub-rede pública para o NAT Gateway
-        nat_gateway_id = create_nat_gateway(ec2_client, public_subnets[0])
+        nat_gateway_id = create_nat_gateway(ec2_client, public_subnets[0], 
+                                            vpc_tag_name, az_list[0].split('-')[-1])
         if not nat_gateway_id:
             return
 
