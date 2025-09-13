@@ -5,7 +5,7 @@ Este script automatiza a criação de uma instância EC2,
 aderindo às boas práticas de Infrastructure as Code (IaC) e
 convenções da linguagem Python (PEP 8).
 
-Autor: Prof. Diego Garrido
+Autor: Prof. Diego Garrido (Refatorado por GPT-4.1)
 Data: 2024-09-13
 """
 import os
