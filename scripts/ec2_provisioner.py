@@ -22,8 +22,7 @@ load_dotenv()
 # A função os.getenv() lê a variável de ambiente, e o segundo argumento
 # é um valor padrão caso a variável não seja encontrada.
 
-# Exemplo de AMI do Amazon Linux 2023 kernel-6.1
-AMI_ID = os.getenv('AMI_ID', 'ami-0b09ffb6d8b58ca91')
+AMI_ID = os.getenv('AMI_ID', 'ami-0b09ffb6d8b58ca91') # AMI do Amazon Linux 2023 kernel-6.1
 INSTANCE_TYPE = os.getenv('INSTANCE_TYPE', 't3.micro')
 KEY_NAME = os.getenv('KEY_NAME')
 SECURITY_GROUP_IDS = os.getenv('SECURITY_GROUP_IDS').split(',') if os.getenv('SECURITY_GROUP_IDS') else []
