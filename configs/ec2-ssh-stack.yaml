@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Template simples para provisionar uma instancia EC2 t2.micro com Amazon Linux
+  e um Security Group para acesso SSH (porta 22).
+
+Parameters:
+  KeyNameParameter:
+    Description: Nome do Key Pair existente na regiao para acesso SSH a instancia.
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Deve ser o nome de um Key Pair valido.
+
+Resources:
+  # Recurso 1: Security Group
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Libera a porta 22 para acesso SSH
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: sg-ssh-aula
+
+  # Recurso 2: Instancia EC2
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      # Utiliza um parametro do SSM para obter a AMI mais recente do Amazon Linux 2.
+      # Isso evita hardcoding de IDs de AMI, que mudam por regiao e com o tempo.
+      ImageId: 'resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+      InstanceType: t2.micro
+      # Utiliza o Key Pair informado como parametro na criacao da stack.
+      KeyName: !Ref KeyNameParameter
+      # Associa a instancia ao Security Group criado neste mesmo template.
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: ec2-aula-distribuidos
+
+Outputs:
+  InstanceId:
+    Description: O ID da instancia EC2 criada.
+    Value: !Ref MyEC2Instance
+  PublicIp:
+    Description: O endereco IP publico da instancia EC2.
+    Value: !GetAtt MyEC2Instance.PublicIp
