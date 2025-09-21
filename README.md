@@ -29,7 +29,7 @@ Para utilizar os scripts, você precisará ter:
 
 1.  **Clone o repositório:**
     ```sh
-    git clone [https://github.com/diegogrr/sisd-iac-aws-boto3.git](https://github.com/diegogrr/sisd-iac-aws-boto3.git)
+    git clone https://github.com/diegogrr/sisd-iac-aws-boto3.git
     cd sisd-iac-aws-boto3
     ```
 
