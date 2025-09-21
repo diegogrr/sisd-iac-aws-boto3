@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: V1 - Template para criar um bucket S3 privado e simples.
+
+Resources:
+  MeuBucketS3:
+    Type: 'AWS::S3::Bucket'
+
+Outputs:
+  NomeDoBucketCriado:
+    Description: O nome do bucket S3 que foi criado.
+    Value: !Ref MeuBucketS3

@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: V2.1 - Transforma o bucket S3 em host de site, ajustando o acesso publico.
+
+Resources:
+  MeuBucketS3:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      # --- ADICIONADO: Configuracao para permitir politicas publicas ---
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  MinhaPoliticaDeBucket:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MeuBucketS3
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${MeuBucketS3}/*'
+
+Outputs:
+  NomeDoBucketCriado:
+    Description: O nome do bucket S3 que foi criado.
+    Value: !Ref MeuBucketS3
+  URLdoSite:
+    Description: A URL para acessar o site estatico.
+    Value: !GetAtt MeuBucketS3.WebsiteURL
